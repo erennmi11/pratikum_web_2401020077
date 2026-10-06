@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 
 
@@ -41,7 +42,7 @@ Route::get('/latihan-php', function () {
 });
 
 
-
+//pertemuan 3
 Route::get('/form-mahasiswa', function () {
     return view('form-mahasiswa');
 });
@@ -89,4 +90,49 @@ Route::post('/form-mahasiswa', function (Request $request) {
     $data['usia'] = (int) $data['usia'];
 
     return view('hasil-form', ['data' => $data]);
+});
+
+
+
+Route::get('/mahasiswa/{nim?}', function (?string $nim = null) {
+
+    try {
+        $pdo = DB::connection()->getPdo();
+
+        $sql = '
+            SELECT m.nim, m.nama, m.email, m.usia,
+                p.nama_prodi
+            FROM mahasiswa m
+            JOIN program_studi p
+                ON p.id = m.program_studi_id
+        ';
+
+        if ($nim !== null) {
+            $sql .= ' WHERE m.nim = :nim';
+        }
+
+        $sql .= ' ORDER BY m.nim';
+
+        $statement = $pdo->prepare($sql);
+
+        $statement->execute(
+            $nim !== null ? ['nim' => $nim] : []
+        );
+
+        $daftarMahasiswa = $statement->fetchAll(\PDO::FETCH_ASSOC);
+
+        return view('mahasiswa', [
+            'daftarMahasiswa' => $daftarMahasiswa,
+            'nim' => $nim,
+        ]);
+
+    } catch (\Throwable $error) {
+
+        report($error);
+
+        return response(
+            'Koneksi atau query basis data gagal. Periksa file .env dan layanan MySQL.',
+            500
+        );
+    }
 });
